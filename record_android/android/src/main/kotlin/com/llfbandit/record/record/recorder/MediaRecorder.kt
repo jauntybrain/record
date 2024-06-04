@@ -46,7 +46,7 @@ class MediaRecorder(
             MediaRecorder(context)
         }
 
-        recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT)
+        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
         recorder.setAudioEncodingBitRate(config.bitRate)
         recorder.setAudioSamplingRate(config.sampleRate)
         recorder.setAudioChannels(2.coerceAtMost(1.coerceAtLeast(config.numChannels)))
