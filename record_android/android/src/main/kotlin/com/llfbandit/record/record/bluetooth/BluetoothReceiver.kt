@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.os.Build
 import com.llfbandit.record.record.device.DeviceUtils
 
 interface BluetoothScoListener {
@@ -35,37 +36,39 @@ class BluetoothReceiver(
     fun register() {
         context.registerReceiver(this, filter)
 
-        audioDeviceCallback = object : AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
-                devices.addAll(DeviceUtils.filterSources(addedDevices.asList()))
+        if (Build.VERSION.SDK_INT >= 23) {
+            audioDeviceCallback = object : AudioDeviceCallback() {
+                override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
+                    devices.addAll(DeviceUtils.filterSources(addedDevices.asList()))
 
-                val hasBluetoothSco = devices.any {
-                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    val hasBluetoothSco = devices.any {
+                        it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    }
+                    if (hasBluetoothSco) {
+                        startBluetooth()
+                    }
                 }
-                if (hasBluetoothSco) {
-                    startBluetooth()
+
+                override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
+                    devices.removeAll(DeviceUtils.filterSources(removedDevices.asList()).toSet())
+
+                    val hasBluetoothSco = devices.any {
+                        it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    }
+                    if (!hasBluetoothSco) {
+                        stopBluetooth()
+                    }
                 }
             }
 
-            override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
-                devices.removeAll(DeviceUtils.filterSources(removedDevices.asList()).toSet())
-
-                val hasBluetoothSco = devices.any {
-                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-                }
-                if (!hasBluetoothSco) {
-                    stopBluetooth()
-                }
-            }
+            audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
         }
-
-        audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
     }
 
     fun unregister() {
         stopBluetooth()
 
-        if (audioDeviceCallback != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioDeviceCallback != null) {
             audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
             audioDeviceCallback = null
         }

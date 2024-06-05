@@ -4,36 +4,43 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
+import androidx.annotation.RequiresApi
 
 class DeviceUtils {
     companion object {
-        fun listInputDevicesAsMap(context: Context): List<Map<String, String>> {
-            val devices = listInputDevices(context).map {
-                val label = StringBuilder()
-                label.apply {
-                    append(it.productName)
-                    append(" (")
-                    append(typeToString(it.type))
-                    if (Build.VERSION.SDK_INT >= 28) append(", ${it.address}")
-                    append(")")
-                }
+        fun listInputDevicesAsMap(context: Context): List<Map<String, String>>? {
+            val devices = if (Build.VERSION.SDK_INT >= 23) {
+                listInputDevices(context).map {
+                    val label = StringBuilder()
+                    label.apply {
+                        append(it.productName)
+                        append(" (")
+                        append(typeToString(it.type))
+                        if (Build.VERSION.SDK_INT >= 28) append(", ${it.address}")
+                        append(")")
+                    }
 
-                mapOf(
-                    "id" to "${it.id}",
-                    "label" to label.toString(),
-                )
+                    mapOf(
+                        "id" to "${it.id}",
+                        "label" to label.toString(),
+                    )
+                }
+            } else {
+                null
             }
 
             return devices
         }
 
-        private fun listInputDevices(context: Context): List<AudioDeviceInfo> {
+        @RequiresApi(23)
+        fun listInputDevices(context: Context): List<AudioDeviceInfo> {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val devices = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
 
             return filterSources(devices.asList())
         }
 
+        @RequiresApi(23)
         fun deviceInfoFromMap(context: Context, device: Map<String, String>?): AudioDeviceInfo? {
             if (device == null) return null
 
@@ -42,6 +49,7 @@ class DeviceUtils {
             }
         }
 
+        @RequiresApi(23)
         fun filterSources(devices: List<AudioDeviceInfo>): List<AudioDeviceInfo> {
             return devices.filter {
                 it.isSource

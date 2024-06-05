@@ -1,10 +1,7 @@
 package com.llfbandit.record.record.format
 
-import android.media.MediaCodecInfo
-import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.util.Log
-import android.util.Range
 import com.llfbandit.record.record.RecordConfig
 import com.llfbandit.record.record.container.IContainerWriter
 import com.llfbandit.record.record.encoder.EncoderListener
@@ -13,12 +10,6 @@ import com.llfbandit.record.record.encoder.MediaCodecEncoder
 import com.llfbandit.record.record.encoder.PassthroughEncoder
 import kotlin.math.abs
 
-
-/**
- * Represents an audio format.
- * This class is responsible for creating the encoder and container for the specified format.
- * It also provides the [MediaFormat] for the encoded audio stream.
- */
 sealed class Format {
     /**
      * The MIME type of the encoded audio stream inside the container.
@@ -34,43 +25,21 @@ sealed class Format {
      */
     abstract fun getMediaFormat(config: RecordConfig): MediaFormat
 
-    protected open fun adjustSampleRate(format: MediaFormat, sampleRate: Int) {
-        format.setInteger(MediaFormat.KEY_SAMPLE_RATE, sampleRate)
-    }
-
-    private fun adjustBitRate(format: MediaFormat, bitRate: Int) {
-        format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
-    }
-
-    protected open fun adjustNumChannels(format: MediaFormat, numChannels: Int) {
-        format.setInteger(MediaFormat.KEY_CHANNEL_MASK, numChannels)
-    }
-
     /**
      * Create an encoder that produces [MediaFormat] output.
      */
     fun getEncoder(
         config: RecordConfig,
         listener: EncoderListener
-    ): Pair<IEncoder, MediaFormat> {
+    ): IEncoder {
 
         val mediaFormat = getMediaFormat(config)
+        val container = getContainer(config.path)
 
         return if (passthrough) {
-            Pair(
-                PassthroughEncoder(config, this, mediaFormat, listener),
-                mediaFormat
-            )
+            PassthroughEncoder(mediaFormat, listener, container)
         } else {
-            val codec = findCodecForAdjustedFormat(config, mediaFormat)
-            codec ?: throw Exception(
-                "No codec found for given config $mediaFormat. You should try with other values."
-            )
-
-            Pair(
-                MediaCodecEncoder(config, this, mediaFormat, listener, codec),
-                mediaFormat
-            )
+            MediaCodecEncoder(mediaFormat, listener, container)
         }
     }
 
@@ -94,77 +63,11 @@ sealed class Format {
         }
 
         if (value != values[idx]) {
-            Log.d(TAG, "Available values: ${values.indices.map { values[it] }}")
-            Log.d(TAG, "Adjusted to: ${values[idx]}")
+            Log.d(TAG, "Available values: $values")
+            Log.d(TAG, "Adjusted to: $value")
         }
 
         return values[idx]
-    }
-
-    private fun checkBounds(range: Range<Int>, value: Int): Int {
-        if (range.lower > value) {
-            return range.lower
-        } else if (range.upper < value) {
-            return range.upper
-        }
-        return value
-    }
-
-    private fun adjustFormat(
-        caps: MediaCodecInfo.CodecCapabilities,
-        config: RecordConfig,
-        mediaFormat: MediaFormat
-    ): Boolean {
-        if (!caps.isFormatSupported(mediaFormat)) {
-            adjustBitRate(
-                mediaFormat,
-                checkBounds(caps.audioCapabilities.bitrateRange, config.bitRate)
-            )
-            if (caps.audioCapabilities.supportedSampleRates != null) {
-                adjustSampleRate(
-                    mediaFormat,
-                    nearestValue(
-                        caps.audioCapabilities.supportedSampleRates,
-                        config.sampleRate
-                    )
-                )
-            }
-            adjustNumChannels(
-                mediaFormat,
-                nearestValue(
-                    intArrayOf(1, caps.audioCapabilities.maxInputChannelCount),
-                    config.numChannels
-                )
-            )
-
-            return caps.isFormatSupported(mediaFormat)
-        }
-
-        return true
-    }
-
-    private fun findCodecForAdjustedFormat(
-        config: RecordConfig,
-        mediaFormat: MediaFormat
-    ): String? {
-        val codecs = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-
-        for (info in codecs.codecInfos) {
-            if (!info.isEncoder) {
-                continue
-            }
-
-            try {
-                val caps = info.getCapabilitiesForType(mimeTypeAudio)
-                if (caps != null && adjustFormat(caps, config, mediaFormat)) {
-                    return info.name
-                }
-            } catch (e: IllegalArgumentException) {
-                // type is not supported
-            }
-        }
-
-        return null
     }
 
     companion object {

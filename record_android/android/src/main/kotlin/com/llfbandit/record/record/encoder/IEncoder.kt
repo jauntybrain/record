@@ -6,20 +6,33 @@ interface IEncoder {
      *
      * Can only be called if the encoder process is not already started.
      */
-    fun startEncoding()
+    fun start()
 
     /**
-     * Stop the encoder process.
-     * Release resources used by the encoder process.
+     * Pause the encoder process.
      *
      * Can only be called if the encoder process is started.
      */
-    fun stopEncoding()
+    fun pause()
 
     /**
-     * Encode bytes of audio to file
+     * Resume the encoder process.
      *
-     * @param bytes - PCM input buffer
+     * Can only be called if the encoder process is paused.
      */
-    fun encode(bytes: ByteArray)
+    fun resume()
+
+    /**
+     * Stop the encoder process.
+     *
+     * Can only be called if the encoder process is started.
+     */
+    fun stop()
+
+    /**
+     * Release resources used by the encoder process.
+     *
+     * If the encoder process is not already stopped, then it will be stopped.
+     */
+    fun release()
 }

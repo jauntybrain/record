@@ -12,36 +12,19 @@ import java.nio.ByteBuffer
  * @param containerFormat A valid [MediaMuxer.OutputFormat] value for the output container format.
  */
 class MuxerContainer(path: String, containerFormat: Int) : IContainerWriter {
-    private val mMuxer = MediaMuxer(path, containerFormat)
-    private var mIsStarted = false
+    private val muxer = MediaMuxer(path, containerFormat)
 
-    override fun start() {
-        if (mIsStarted) return
+    override fun start() = muxer.start()
 
-        mMuxer.start()
-        mIsStarted = true
-    }
+    override fun stop() = muxer.stop()
 
-    override fun stop() {
-        if (!mIsStarted) return
+    override fun release() = muxer.release()
 
-        mMuxer.stop()
-        mIsStarted = false
-    }
-
-    override fun release() {
-        mMuxer.release()
-        mIsStarted = false
-    }
-
-    override fun addTrack(mediaFormat: MediaFormat): Int = mMuxer.addTrack(mediaFormat)
+    override fun addTrack(mediaFormat: MediaFormat): Int = muxer.addTrack(mediaFormat)
 
     override fun writeSampleData(
         trackIndex: Int,
         byteBuffer: ByteBuffer,
         bufferInfo: MediaCodec.BufferInfo
-    ) {
-        if (!mIsStarted) return
-        mMuxer.writeSampleData(trackIndex, byteBuffer, bufferInfo)
-    }
+    ) = muxer.writeSampleData(trackIndex, byteBuffer, bufferInfo)
 }

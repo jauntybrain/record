@@ -2,6 +2,7 @@ package com.llfbandit.record.methodcall
 
 import android.app.Activity
 import android.content.Context
+import android.os.Build
 import com.llfbandit.record.Utils
 import com.llfbandit.record.permission.PermissionManager
 import com.llfbandit.record.record.RecordConfig
@@ -114,7 +115,7 @@ class MethodCallHandlerImpl(
     }
 
     private fun createRecorder(recorderId: String) {
-        val recorder = RecorderWrapper(appContext, recorderId, messenger)
+        val recorder = RecorderWrapper(recorderId, messenger)
         recorder.setActivity(activity)
         recorders[recorderId] = recorder
 
@@ -135,7 +136,11 @@ class MethodCallHandlerImpl(
     }
 
     private fun getRecordConfig(call: MethodCall): RecordConfig {
-        val androidConfig = call.argument("androidConfig") as Map<*, *>?
+        val device = if (Build.VERSION.SDK_INT >= 23) {
+            DeviceUtils.deviceInfoFromMap(appContext, call.argument("device"))
+        } else {
+            null
+        }
 
         return RecordConfig(
             call.argument("path"),
@@ -143,12 +148,10 @@ class MethodCallHandlerImpl(
             Utils.firstNonNull(call.argument("bitRate"), 128000),
             Utils.firstNonNull(call.argument("sampleRate"), 44100),
             Utils.firstNonNull(call.argument("numChannels"), 2),
-            DeviceUtils.deviceInfoFromMap(appContext, call.argument("device")),
+            device,
             Utils.firstNonNull(call.argument("autoGain"), false),
             Utils.firstNonNull(call.argument("echoCancel"), false),
-            Utils.firstNonNull(call.argument("noiseSuppress"), false),
-            Utils.firstNonNull(androidConfig?.get("useLegacy") as Boolean?, false),
-            Utils.firstNonNull(androidConfig?.get("muteAudio") as Boolean?, false),
+            Utils.firstNonNull(call.argument("noiseSuppress"), false)
         )
     }
 }

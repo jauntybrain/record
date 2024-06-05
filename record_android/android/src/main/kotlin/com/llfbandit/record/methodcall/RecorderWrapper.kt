@@ -1,23 +1,16 @@
 package com.llfbandit.record.methodcall
 
 import android.app.Activity
-import android.content.Context
-import com.llfbandit.record.record.recorder.AudioRecorder
+import com.llfbandit.record.record.AudioRecorder
 import com.llfbandit.record.record.RecordConfig
 import com.llfbandit.record.record.bluetooth.BluetoothScoListener
-import com.llfbandit.record.record.recorder.IRecorder
-import com.llfbandit.record.record.recorder.MediaRecorder
 import com.llfbandit.record.record.stream.RecorderRecordStreamHandler
 import com.llfbandit.record.record.stream.RecorderStateStreamHandler
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
-internal class RecorderWrapper(
-    private val context: Context,
-    recorderId: String,
-    messenger: BinaryMessenger
-): BluetoothScoListener {
+internal class RecorderWrapper(recorderId: String, messenger: BinaryMessenger): BluetoothScoListener {
     companion object {
         const val EVENTS_STATE_CHANNEL = "com.llfbandit.record/events/"
         const val EVENTS_RECORD_CHANNEL = "com.llfbandit.record/eventsRecord/"
@@ -27,7 +20,7 @@ internal class RecorderWrapper(
     private val recorderStateStreamHandler = RecorderStateStreamHandler()
     private var eventRecordChannel: EventChannel?
     private val recorderRecordStreamHandler = RecorderRecordStreamHandler()
-    private var recorder: IRecorder? = null
+    private var recorder: AudioRecorder? = null
 
     init {
         eventChannel = EventChannel(messenger, EVENTS_STATE_CHANNEL + recorderId)
@@ -46,9 +39,6 @@ internal class RecorderWrapper(
     }
 
     fun startRecordingToStream(config: RecordConfig, result: MethodChannel.Result) {
-        if (config.useLegacy) {
-            throw Exception("Unsupported feature from legacy recorder.")
-        }
         startRecording(config, result)
     }
 
@@ -129,7 +119,7 @@ internal class RecorderWrapper(
     private fun startRecording(config: RecordConfig, result: MethodChannel.Result) {
         try {
             if (recorder == null) {
-                recorder = createRecorder(config)
+                recorder = createRecorder()
                 start(config, result)
             } else if (recorder!!.isRecording) {
                 recorder!!.stop(fun(_) = start(config, result))
@@ -141,15 +131,10 @@ internal class RecorderWrapper(
         }
     }
 
-    private fun createRecorder(config: RecordConfig): IRecorder {
-        if (config.useLegacy) {
-            return MediaRecorder(context, recorderStateStreamHandler)
-        }
-
+    private fun createRecorder(): AudioRecorder {
         return AudioRecorder(
             recorderStateStreamHandler,
-            recorderRecordStreamHandler,
-            context
+            recorderRecordStreamHandler
         )
     }
 

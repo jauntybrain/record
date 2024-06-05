@@ -10,7 +10,7 @@ buildscript {
 
     dependencies {
         // https://developer.android.com/studio/releases/gradle-plugin
-        classpath 'com.android.tools.build:gradle:8.4.1'
+        classpath 'com.android.tools.build:gradle:7.4.2'
         // https://plugins.gradle.org/plugin/org.jetbrains.kotlin.android
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
@@ -32,7 +32,7 @@ android {
         namespace 'com.llfbandit.record'
     }
     
-    compileSdk 34
+    compileSdkVersion 33
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -48,6 +48,18 @@ android {
     }
 
     defaultConfig {
-        minSdk 23
+        minSdkVersion 21
     }
+}
+
+/*allprojects {
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        }
+    }
+}*/
+
+dependencies {
+    runtimeOnly 'androidx.appcompat:appcompat:1.6.1'
 }
