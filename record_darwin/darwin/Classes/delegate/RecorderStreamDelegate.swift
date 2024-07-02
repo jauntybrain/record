@@ -8,29 +8,31 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
 
   func start(config: RecordConfig, recordEventHandler: RecordStreamHandler) throws {
     let audioEngine = AVAudioEngine()
-    
-#if os(iOS)
-    try initAVAudioSession(config: config)
-#else
-    // set input device to the node
-    if let deviceId = config.device?.id,
-       let inputDeviceId = getAudioDeviceIDFromUID(uid: deviceId) {
-      do {
-        try audioEngine.inputNode.auAudioUnit.setDeviceID(inputDeviceId)
-      } catch {
-        throw RecorderError.error(
-          message: "Failed to start recording",
-          details: "Setting input device: \(deviceId) \(error)"
-        )
+
+    #if os(iOS)
+      print("calling initAVAudioSession")
+      try initAVAudioSession(config: config)
+    #else
+      // set input device to the node
+      if let deviceId = config.device?.id,
+         let inputDeviceId = getAudioDeviceIDFromUID(uid: deviceId)
+      {
+        do {
+          try audioEngine.inputNode.auAudioUnit.setDeviceID(inputDeviceId)
+        } catch {
+          throw RecorderError.error(
+            message: "Failed to start recording",
+            details: "Setting input device: \(deviceId) \(error)"
+          )
+        }
       }
-    }
-#endif
-    
+    #endif
+
     // Set up AGC & echo cancel
     initEffects(config: config, audioEngine: audioEngine)
-    
+
     let srcFormat = audioEngine.inputNode.outputFormat(forBus: 0)
-    
+
     let dstFormat = AVAudioFormat(
       commonFormat: .pcmFormatInt16,
       sampleRate: Double(config.sampleRate),
@@ -44,7 +46,7 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
         details: "Format is not supported: \(config.sampleRate)Hz - \(config.numChannels) channels."
       )
     }
-    
+
     guard let converter = AVAudioConverter(from: srcFormat, to: dstFormat) else {
       throw RecorderError.error(
         message: "Failed to start recording",
@@ -52,8 +54,8 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
       )
     }
     converter.sampleRateConverterQuality = AVAudioQuality.high.rawValue
-    
-    audioEngine.inputNode.installTap(onBus: bus, bufferSize: 2048, format: srcFormat) { (buffer, _) -> Void in
+
+    audioEngine.inputNode.installTap(onBus: bus, bufferSize: 2048, format: srcFormat) { buffer, _ in
       self.stream(
         buffer: buffer,
         dstFormat: dstFormat,
@@ -61,87 +63,87 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
         recordEventHandler: recordEventHandler
       )
     }
-    
+
     audioEngine.prepare()
     try audioEngine.start()
-    
+
     self.audioEngine = audioEngine
   }
-  
-  func stop(completionHandler: @escaping (String?) -> ()) {
+
+  func stop(completionHandler: @escaping (String?) -> Void) {
     audioEngine?.inputNode.removeTap(onBus: bus)
     audioEngine?.stop()
     audioEngine = nil
-    
+
     completionHandler(nil)
   }
-  
+
   func pause() {
     audioEngine?.pause()
   }
-  
+
   func resume() throws {
     try audioEngine?.start()
   }
-  
+
   func cancel() throws {
-    stop { path in }
+    stop { _ in }
   }
-  
+
   func getAmplitude() -> Float {
     return amplitude
   }
-  
+
   private func updateAmplitude(_ samples: [Int16]) {
-    var maxSample:Float = -160.0
+    var maxSample: Float = -160.0
 
     for sample in samples {
       let curSample = abs(Float(sample))
-      if (curSample > maxSample) {
+      if curSample > maxSample {
         maxSample = curSample
       }
     }
-    
+
     amplitude = 20 * (log(maxSample / 32767.0) / log(10))
   }
-  
+
   func dispose() {
-    stop { path in }
+    stop { _ in }
   }
-  
+
   // Little endian
   private func convertInt16toUInt8(_ samples: [Int16]) -> [UInt8] {
     var bytes: [UInt8] = []
-    
+
     for sample in samples {
-      bytes.append(UInt8(sample & 0x00ff))
-      bytes.append(UInt8(sample >> 8 & 0x00ff))
+      bytes.append(UInt8(sample & 0x00FF))
+      bytes.append(UInt8(sample >> 8 & 0x00FF))
     }
-    
+
     return bytes
   }
-  
+
   private func stream(
     buffer: AVAudioPCMBuffer,
     dstFormat: AVAudioFormat,
     converter: AVAudioConverter,
     recordEventHandler: RecordStreamHandler
-  ) -> Void {
-    let inputCallback: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+  ) {
+    let inputCallback: AVAudioConverterInputBlock = { _, outStatus in
       outStatus.pointee = .haveData
       return buffer
     }
-    
+
     // Determine frame capacity
     let capacity = (UInt32(dstFormat.sampleRate) * dstFormat.channelCount * buffer.frameLength) / (UInt32(buffer.format.sampleRate) * buffer.format.channelCount)
-    
+
     // Destination buffer
     guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: dstFormat, frameCapacity: capacity) else {
       print("Unable to create output buffer")
-      stop { path in }
+      stop { _ in }
       return
     }
-    
+
     // Convert input buffer (resample, num channels)
     var error: NSError? = nil
     converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputCallback)
@@ -149,28 +151,28 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
       print(error.localizedDescription)
       return
     }
-    
+
     if let channelData = convertedBuffer.int16ChannelData {
       // Fill samples
       let channelDataPointer = channelData.pointee
       let samples = stride(from: 0,
                            to: Int(convertedBuffer.frameLength),
-                           by: buffer.stride).map{ channelDataPointer[$0] }
+                           by: buffer.stride).map { channelDataPointer[$0] }
 
       // Update current amplitude
       updateAmplitude(samples)
-      
+
       // Send bytes
       if let eventSink = recordEventHandler.eventSink {
         let bytes = Data(_: convertInt16toUInt8(samples))
-        
+
         DispatchQueue.main.async {
           eventSink(FlutterStandardTypedData(bytes: bytes))
         }
       }
     }
   }
-  
+
   private func initEffects(config: RecordConfig, audioEngine: AVAudioEngine) {
     let propsize = UInt32(MemoryLayout<Bool>.size)
     var autoGain = config.autoGain

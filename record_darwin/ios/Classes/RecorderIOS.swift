@@ -13,7 +13,7 @@ func listInputs() throws -> [Device] {
 func listInputDevices() throws -> [AVAudioSessionPortDescription]? {
   let audioSession = AVAudioSession.sharedInstance()
   let options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetooth]
-  
+
   do {
     try audioSession.setCategory(.playAndRecord, options: options)
   } catch {
@@ -27,14 +27,14 @@ private func setInput(_ config: RecordConfig) throws {
   guard let device = config.device else {
     return
   }
-  
+
   let inputs = try listInputDevices()
   guard let inputs = inputs else {
     return
   }
-  
+
   let audioSession = AVAudioSession.sharedInstance()
-  
+
   for input in inputs {
     if input.uid == device.id {
       try audioSession.setPreferredInput(input)
@@ -45,21 +45,22 @@ private func setInput(_ config: RecordConfig) throws {
 
 extension AudioRecordingDelegate {
   func initAVAudioSession(config: RecordConfig) throws {
-    let audioSession = AVAudioSession.sharedInstance()
-    let options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
-    
+    print("initAVAudioSession")
+    let audioSession: AVAudioSession = AVAudioSession.sharedInstance()
+    let options: AVAudioSession.CategoryOptions = [.allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
+
     do {
       try audioSession.setCategory(.playAndRecord, options: options)
     } catch {
       throw RecorderError.error(message: "Failed to start recording", details: "setCategory: \(error.localizedDescription)")
     }
-    
+
     do {
       try audioSession.setPreferredSampleRate((config.sampleRate <= 48000) ? Double(config.sampleRate) : 48000.0)
     } catch {
       throw RecorderError.error(message: "Failed to start recording", details: "setPreferredSampleRate: \(error.localizedDescription)")
     }
-    
+
     if #available(iOS 14.5, *) {
       do {
         try audioSession.setPrefersNoInterruptionsFromSystemAlerts(true)
@@ -67,13 +68,13 @@ extension AudioRecordingDelegate {
         throw RecorderError.error(message: "Failed to start recording", details: "setPrefersNoInterruptionsFromSystemAlerts: \(error.localizedDescription)")
       }
     }
-    
+
     do {
       try audioSession.setActive(true, options: .notifyOthersOnDeactivation) // Must be done before setting channels and others
     } catch {
       throw RecorderError.error(message: "Failed to start recording", details: "setActive: \(error.localizedDescription)")
     }
-    
+
     do {
       let newPreferredInputNumberOfChannels = min(config.numChannels, audioSession.maximumInputNumberOfChannels)
 
@@ -83,27 +84,29 @@ extension AudioRecordingDelegate {
     } catch {
       throw RecorderError.error(message: "Failed to start recording", details: "setPreferredInputNumberOfChannels: \(error.localizedDescription)")
     }
-    
+
     do {
       try setInput(config)
     } catch {
       throw RecorderError.error(message: "Failed to start recording", details: "setInput: \(error.localizedDescription)")
     }
-    
+
     NotificationCenter.default.addObserver(
       forName: AVAudioSession.interruptionNotification,
       object: nil,
       queue: nil,
-      using: onAudioSessionInterruption)
+      using: onAudioSessionInterruption
+    )
   }
 
-  private func onAudioSessionInterruption(notification: Notification) -> Void {
+  private func onAudioSessionInterruption(notification: Notification) {
     guard let userInfo = notification.userInfo,
           let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
-          let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+          let type = AVAudioSession.InterruptionType(rawValue: typeValue)
+    else {
       return
     }
-    
+
     if type == AVAudioSession.InterruptionType.began {
       pause()
     }
