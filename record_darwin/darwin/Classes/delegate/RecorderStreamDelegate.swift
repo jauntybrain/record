@@ -55,7 +55,7 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     }
     converter.sampleRateConverterQuality = AVAudioQuality.high.rawValue
 
-    audioEngine.inputNode.installTap(onBus: bus, bufferSize: 2048, format: srcFormat) { buffer, _ in
+    audioEngine.inputNode.installTap(onBus: bus, bufferSize: 640, format: srcFormat) { buffer, _ in
       self.stream(
         buffer: buffer,
         dstFormat: dstFormat,

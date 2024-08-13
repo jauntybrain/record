@@ -58,10 +58,11 @@ class PCMReader(
 
     @Throws(Exception::class)
     fun read(): ByteArray {
-        val buffer = ByteArray(bufferSize)
-        val resultBytes = reader.read(buffer, 0, bufferSize)
+        val buffer = ByteArray(640)
+        val resultBytes = reader.read(buffer, 0, 640)
         if (resultBytes < 0) {
-            throw Exception(getReadFailureReason(resultBytes))
+            // throw Exception(getReadFailureReason(resultBytes))
+            return ByteArray(0)
         }
 
         val audioBuffer = ByteArray(resultBytes)
