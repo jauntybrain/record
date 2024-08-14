@@ -168,8 +168,8 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
         let bytes = Data(_: convertInt16toUInt8(samples))
 
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let dateString = dateFormatter.string(from: Date())
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        let dateString: String = dateFormatter.string(from: Date())
         print("\(Date()) sink bytes: \(bytes)")
 
         DispatchQueue.main.async {
