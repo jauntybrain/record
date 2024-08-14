@@ -129,7 +129,8 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     converter: AVAudioConverter,
     recordEventHandler: RecordStreamHandler
   ) {
-    let inputCallback: AVAudioConverterInputBlock = { _, outStatus in
+    let inputCallback: AVAudioConverterInputBlock = { count, outStatus in
+      print("inputCallback count \(count)")
       outStatus.pointee = .haveData
       return buffer
     }
@@ -165,6 +166,11 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
       // Send bytes
       if let eventSink = recordEventHandler.eventSink {
         let bytes = Data(_: convertInt16toUInt8(samples))
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        let dateString = dateFormatter.string(from: Date())
+        print("\(dateString)) sink bytes: \(bytes)")
 
         DispatchQueue.main.async {
           eventSink(FlutterStandardTypedData(bytes: bytes))
