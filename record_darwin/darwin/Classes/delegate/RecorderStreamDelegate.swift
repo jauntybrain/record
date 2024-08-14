@@ -6,6 +6,11 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
   private var amplitude: Float = -160.0
   private let bus = 0
 
+  private var circularBuffer: [Int16] = []
+  private let bytesPerSample = 2 // 16-bit audio = 2 bytes per sample
+  private let desiredByteCount = 640
+  private let desiredSampleCount = 640 / 2 // 320 samples (640 bytes)
+
   func start(config: RecordConfig, recordEventHandler: RecordStreamHandler) throws {
     let audioEngine = AVAudioEngine()
 
@@ -163,17 +168,26 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
       // Update current amplitude
       updateAmplitude(samples)
 
+      // Accumulate samples in circular buffer
+      circularBuffer.append(contentsOf: samples)
+
       // Send bytes
-      if let eventSink = recordEventHandler.eventSink {
-        let bytes = Data(_: convertInt16toUInt8(samples))
+      while circularBuffer.count >= desiredSampleCount {
+        let chunk = Array(circularBuffer.prefix(desiredSampleCount))
+        circularBuffer.removeFirst(desiredSampleCount)
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        let dateString = dateFormatter.string(from: Date())
-        print("\(dateString)) sink bytes: \(bytes)")
+        // Send bytes
+        if let eventSink = recordEventHandler.eventSink {
+          let bytes = Data(_: convertInt16toUInt8(chunk))
 
-        DispatchQueue.main.async {
-          eventSink(FlutterStandardTypedData(bytes: bytes))
+          let dateFormatter = DateFormatter()
+          dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+          let dateString = dateFormatter.string(from: Date())
+          print("\(dateString) sink bytes: \(bytes.count)")
+
+          DispatchQueue.main.async {
+            eventSink(FlutterStandardTypedData(bytes: bytes))
+          }
         }
       }
     }
