@@ -48,7 +48,13 @@ extension AudioRecordingDelegate {
     print("clearAVAudioSession")
     do {
       let audioSession = AVAudioSession.sharedInstance()
-      try audioSession.setPrefersNoInterruptionsFromSystemAlerts(false)
+      if #available(iOS 14.5, *) {
+        do {
+          try audioSession.setPrefersNoInterruptionsFromSystemAlerts(false)
+        } catch {
+          print("failed to setPrefersNoInterruptionsFromSystemAlerts: \(error.localizedDescription) \(error)")
+        }
+      }
       try audioSession.overrideOutputAudioPort(.none)
       NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
       try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
