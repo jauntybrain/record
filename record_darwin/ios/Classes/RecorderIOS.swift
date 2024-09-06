@@ -48,6 +48,7 @@ extension AudioRecordingDelegate {
     print("clearAVAudioSession")
     do {
       let audioSession = AVAudioSession.sharedInstance()
+      try audioSession.setPrefersNoInterruptionsFromSystemAlerts(false)
       try audioSession.overrideOutputAudioPort(.none)
       NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
       try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
@@ -87,7 +88,7 @@ extension AudioRecordingDelegate {
 
     if #available(iOS 14.5, *) {
       do {
-        try audioSession.setPrefersNoInterruptionsFromSystemAlerts(true)
+        try audioSession.setPrefersNoInterruptionsFromSystemAlerts(false)
       } catch {
         throw RecorderError.error(message: "Failed to start recording", details: "setPrefersNoInterruptionsFromSystemAlerts: \(error.localizedDescription)")
       }
