@@ -44,10 +44,23 @@ private func setInput(_ config: RecordConfig) throws {
 }
 
 extension AudioRecordingDelegate {
+  func clearAVAudioSession() {
+    print("clearAVAudioSession")
+    let audioSession = AVAudioSession.sharedInstance()
+    audioSession.overrideOutputAudioPort(.none)
+    audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+  }
+
   func initAVAudioSession(config: RecordConfig) throws {
     print("initAVAudioSession")
-    let audioSession: AVAudioSession = AVAudioSession.sharedInstance()
+    let audioSession = AVAudioSession.sharedInstance()
     let options: AVAudioSession.CategoryOptions = [.allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
+
+    do {
+      try audioSession.overrideOutputAudioPort(.none)
+    } catch {
+      throw RecorderError.error(message: "Failed to start recording", details: "overrideOutputAudioPort: \(error.localizedDescription)")
+    }
 
     do {
       try audioSession.setCategory(.playAndRecord, options: options)
@@ -66,7 +79,6 @@ extension AudioRecordingDelegate {
     } catch {
       throw RecorderError.error(message: "Failed to start recording", details: "setPreferredIOBufferDuration: \(error.localizedDescription)")
     }
-
 
     if #available(iOS 14.5, *) {
       do {
