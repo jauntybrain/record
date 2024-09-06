@@ -52,7 +52,6 @@ extension AudioRecordingDelegate {
       try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
     } catch {
       print("failed to clearAVAudioSession: \(error.localizedDescription)")
-      throw RecorderError.error(message: "Failed to stop recording", details: "clearAVAudioSession: \(error.localizedDescription)")
     }
   }
 
