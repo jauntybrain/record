@@ -71,13 +71,29 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
   }
 
   func stop(completionHandler: @escaping (String?) -> Void) {
-    audioEngine?.inputNode.removeTap(onBus: bus)
-    audioEngine?.stop()
-    audioEngine = nil
-    clearAVAudioSession()
+    guard let engine = audioEngine else {
+        completionHandler(nil)
+        return
+    }
 
-    completionHandler(nil)
-  }
+    // Remove the tap
+    engine.inputNode.removeTap(onBus: bus)
+
+    // Stop the engine
+    engine.stop()
+
+    // Ensure all resources are deallocated
+    engine.reset()
+
+    // Set audioEngine to nil
+    audioEngine = nil
+
+    // Wait a short time to ensure all audio processes have completed
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        self.clearAVAudioSession()
+        completionHandler(nil)
+    }
+}
 
   func pause() {
     audioEngine?.pause()

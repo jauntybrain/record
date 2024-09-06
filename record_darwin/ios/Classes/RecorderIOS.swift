@@ -49,9 +49,10 @@ extension AudioRecordingDelegate {
     do {
       let audioSession = AVAudioSession.sharedInstance()
       try audioSession.overrideOutputAudioPort(.none)
+      NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
       try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
     } catch {
-      print("failed to clearAVAudioSession: \(error.localizedDescription)")
+      print("failed to clearAVAudioSession: \(error.localizedDescription) \(error)")
     }
   }
 
