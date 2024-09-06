@@ -46,9 +46,14 @@ private func setInput(_ config: RecordConfig) throws {
 extension AudioRecordingDelegate {
   func clearAVAudioSession() {
     print("clearAVAudioSession")
-    let audioSession = AVAudioSession.sharedInstance()
-    audioSession.overrideOutputAudioPort(.none)
-    audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+    do {
+      let audioSession = AVAudioSession.sharedInstance()
+      try audioSession.overrideOutputAudioPort(.none)
+      try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+    } catch {
+      print("failed to clearAVAudioSession: \(error.localizedDescription)")
+      throw RecorderError.error(message: "Failed to stop recording", details: "clearAVAudioSession: \(error.localizedDescription)")
+    }
   }
 
   func initAVAudioSession(config: RecordConfig) throws {
