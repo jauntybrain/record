@@ -94,7 +94,7 @@ extension AudioRecordingDelegate {
 
     if #available(iOS 14.5, *) {
       do {
-        try audioSession.setPrefersNoInterruptionsFromSystemAlerts(false)
+        try audioSession.setPrefersNoInterruptionsFromSystemAlerts(true)
       } catch {
         throw RecorderError.error(message: "Failed to start recording", details: "setPrefersNoInterruptionsFromSystemAlerts: \(error.localizedDescription)")
       }
