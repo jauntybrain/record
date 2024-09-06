@@ -71,10 +71,10 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
   }
 
   func stop(completionHandler: @escaping (String?) -> Void) {
-    clearAVAudioSession()
     audioEngine?.inputNode.removeTap(onBus: bus)
     audioEngine?.stop()
     audioEngine = nil
+    clearAVAudioSession()
 
     completionHandler(nil)
   }
