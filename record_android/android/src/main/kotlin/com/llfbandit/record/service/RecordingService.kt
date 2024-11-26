@@ -104,11 +104,25 @@ class RecordingService : Service() {
             manager.createNotificationChannel(channel)
         }
 
-        return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Ongoing call")
-            .setContentText("EzDubs call is in progress")
-            .setSmallIcon(android.R.drawable.sym_call_outgoing)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+        val person = Person.Builder()
+            .setName("EzDubs")
             .build()
+
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
+        notificationBuilder.setSmallIcon(android.R.drawable.sym_call_outgoing)
+
+        notificationBuilder.setStyle(NotificationCompat.CallStyle.forOngoingCall(
+            person,
+            PendingIntent.getService(this, 0, Intent(this, RecordingService::class.java), PendingIntent.FLAG_UPDATE_CURRENT)
+        ))
+
+        return notificationBuilder.build()
+
+        // return NotificationCompat.Builder(this, channelId)
+        //     .setContentTitle("Ongoing call")
+        //     .setContentText("EzDubs call is in progress")
+        //     .setSmallIcon(android.R.drawable.sym_call_outgoing)
+        //     .setPriority(NotificationCompat.PRIORITY_LOW)
+        //     .build()
     }
 }
