@@ -17,11 +17,15 @@ import com.llfbandit.record.record.RecordConfig
 import com.llfbandit.record.record.recorder.AudioRecorder
 import com.llfbandit.record.record.stream.RecorderRecordStreamHandler
 import com.llfbandit.record.record.stream.RecorderStateStreamHandler
+import com.llfbandit.record.record.RecordState
+import android.app.PendingIntent
+import androidx.core.app.Person
 
 class RecordingService : Service() {
     companion object {
         private val TAG = RecordingService::class.java.simpleName
         private const val NOTIFICATION_ID = 889
+        const val ACTION_DECLINE = "com.llfbandit.record.DECLINE_RECORDING"
     }
     
     private val binder = RecordingBinder()
@@ -71,7 +75,7 @@ class RecordingService : Service() {
 
     fun stopRecording() {
         Log.d(TAG, "stopRecording")
-        audioRecorder?.stop { _ ->
+        audioRecorder?.stop { _: String? ->
             stopForeground(true)
             stopSelf()
         }
@@ -104,25 +108,55 @@ class RecordingService : Service() {
             manager.createNotificationChannel(channel)
         }
 
-        val person = Person.Builder()
-            .setName("EzDubs")
-            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val person = Person.Builder()
+                .setName("EzDubs")
+                .build()
 
-        val notificationBuilder = NotificationCompat.Builder(this, channelId)
-        notificationBuilder.setSmallIcon(android.R.drawable.sym_call_outgoing)
+            val declineIntent = Intent(this, RecordingService::class.java).apply {
+                action = ACTION_DECLINE
+            }
+            
+            val pendingDeclineIntent = PendingIntent.getService(
+                this,
+                0,
+                declineIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
 
-        notificationBuilder.setStyle(NotificationCompat.CallStyle.forOngoingCall(
-            person,
-            PendingIntent.getService(this, 0, Intent(this, RecordingService::class.java), PendingIntent.FLAG_UPDATE_CURRENT)
-        ))
+            val notificationBuilder = NotificationCompat.Builder(this, channelId)
+            notificationBuilder.setSmallIcon(android.R.drawable.sym_call_outgoing)
 
-        return notificationBuilder.build()
 
-        // return NotificationCompat.Builder(this, channelId)
-        //     .setContentTitle("Ongoing call")
-        //     .setContentText("EzDubs call is in progress")
-        //     .setSmallIcon(android.R.drawable.sym_call_outgoing)
-        //     .setPriority(NotificationCompat.PRIORITY_LOW)
-        //     .build()
+            notificationBuilder.setStyle(NotificationCompat.CallStyle.forOngoingCall(
+                person,
+                pendingDeclineIntent
+                ))
+            return notificationBuilder.build()
+        } else {
+            return NotificationCompat.Builder(this, channelId)
+                .setContentTitle("Ongoing call")
+                .setContentText("EzDubs call is in progress")
+                .setSmallIcon(android.R.drawable.sym_call_outgoing)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_DECLINE) {
+            handleDeclineAction()
+        }
+        return START_NOT_STICKY
+    }
+
+    private fun handleDeclineAction() {
+        // Stop the recording service
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+        
+        // Notify Flutter through the state stream handler
+        Log.d(TAG, "handleDeclineAction: sending STOP event")
+        recorderStateStreamHandler.sendStateEvent(3)
     }
 }

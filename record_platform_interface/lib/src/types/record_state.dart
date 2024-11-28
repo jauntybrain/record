@@ -1,2 +1,2 @@
 /// All states of the recorder
-enum RecordState { pause, record, stop }
+enum RecordState { pause, record, stop, callEnd }
