@@ -130,7 +130,7 @@ class MicRecorderDelegate extends RecorderDelegate {
     // TODO Remove record.worklet.js from assets and use it from lib sources.
     // This will avoid to propagate it on non web platforms.
     await context.audioWorklet
-        .addModule('./assets/packages/record_web/assets/js/record.worklet.js')
+        .addModule('assets/packages/record_web/assets/js/record.worklet.js')
         .toDart;
 
     final workletNode = web.AudioWorkletNode(
@@ -167,6 +167,26 @@ class MicRecorderDelegate extends RecorderDelegate {
           ((web.MessageEvent event) => _onMessage(event)).toJS;
     }
 
+    // print out the state change
+    context.onstatechange = ((web.Event event) {
+      if (context.state == 'interrupted') {
+        // Define an async function to handle the state change
+        Future<void> handleStateChange() async {
+          await context.resume().toDart;
+
+          if (_workletNode != null) {
+            // Workaround for Chromium based browsers,
+            // Audio worklet node is disconnected
+            // when pause state is too long (> 12~15 secs)
+            _source?.connect(_workletNode!)?.connect(context.destination);
+          }
+        }
+
+        // Call the async function
+        handleStateChange();
+      }
+    }).toJS;
+
     _source = source;
     _workletNode = workletNode;
     _context = context;
@@ -188,6 +208,8 @@ class MicRecorderDelegate extends RecorderDelegate {
   void _onMessageStream(web.MessageEvent event) {
     // `data` is a int 16 array containing audio samples
     final output = (event.data as JSInt16Array?)?.toDart;
+
+    // print('RECORDER: got the message stream - ${output}');
 
     if (output case final output?) {
       _recordStreamCtrl?.add(output.buffer.asUint8List());
