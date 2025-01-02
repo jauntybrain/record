@@ -196,41 +196,41 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
   }
 
   private func setVoiceProcessing(echoCancel: Bool, autoGain: Bool, audioEngine: AVAudioEngine) throws {
-    let startTime = CFAbsoluteTimeGetCurrent()
+  //   let startTime = CFAbsoluteTimeGetCurrent()
     
-    if #available(iOS 13.0, *) {
-      do {
-        try audioEngine.inputNode.setVoiceProcessingEnabled(echoCancel)
-        audioEngine.inputNode.isVoiceProcessingAGCEnabled = autoGain
-      } catch {
-        throw RecorderError.error(
-          message: "Failed to setup voice processing",
-          details: "Echo cancel error: \(error)"
-        )
-      }
-    } else {
-        let propsize = UInt32(MemoryLayout<Bool>.size)
-        var enableEcho = (echoCancel ? 1 : 0)
-        var enableAutoGain = (autoGain ? 1 : 0)
+  //   if #available(iOS 13.0, *) {
+  //     do {
+  //       try audioEngine.inputNode.setVoiceProcessingEnabled(echoCancel)
+  //       audioEngine.inputNode.isVoiceProcessingAGCEnabled = autoGain
+  //     } catch {
+  //       throw RecorderError.error(
+  //         message: "Failed to setup voice processing",
+  //         details: "Echo cancel error: \(error)"
+  //       )
+  //     }
+  //   } else {
+  //       let propsize: UInt32 = UInt32(MemoryLayout<Bool>.size)
+  //       var enableEcho = (echoCancel ? 0 : 1)
+  //       var enableAutoGain = (autoGain ? 1 : 0)
 
-        AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
-                            kAUVoiceIOProperty_BypassVoiceProcessing,
-                            kAudioUnitScope_Global,
-                            AudioUnitElement(bus),
-                            &enableEcho,
-                            propsize)
+  //       AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
+  //                           kAUVoiceIOProperty_BypassVoiceProcessing,
+  //                           kAudioUnitScope_Global,
+  //                           AudioUnitElement(bus),
+  //                           &enableEcho,
+  //                           propsize)
 
-        AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
-                            kAUVoiceIOProperty_VoiceProcessingEnableAGC,
-                            kAudioUnitScope_Global,
-                            AudioUnitElement(bus),
-                            &enableAutoGain,
-                            propsize)
-  }
+  //       AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
+  //                           kAUVoiceIOProperty_VoiceProcessingEnableAGC,
+  //                           kAudioUnitScope_Global,
+  //                           AudioUnitElement(bus),
+  //                           &enableAutoGain,
+  //                           propsize)
+  // }
     
-  let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
-  print("Voice processing setup took \(timeElapsed * 1000)ms")
-  }
+  // let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
+  // print("Voice processing setup took \(timeElapsed * 1000)ms")
+  // }
 }
 
 private func initEffects(config: RecordConfig, audioEngine _: AVAudioEngine) {
