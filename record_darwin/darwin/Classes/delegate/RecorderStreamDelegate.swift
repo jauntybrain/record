@@ -12,7 +12,6 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     #if os(iOS)
       print("calling initAVAudioSession")
       try initAVAudioSession(config: config)
-      try setVoiceProcessing(echoCancel: config.echoCancel, autoGain: config.autoGain, audioEngine: audioEngine)
     #else
       // set input device to the node
       if let deviceId = config.device?.id,
@@ -30,7 +29,8 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     #endif
 
     // Set up AGC & echo cancel
-    initEffects(config: config, audioEngine: audioEngine)
+    try setVoiceProcessing(echoCancel: config.echoCancel, autoGain: config.autoGain, audioEngine: audioEngine)
+    
 
     let srcFormat = audioEngine.inputNode.outputFormat(forBus: 0)
 
