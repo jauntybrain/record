@@ -211,8 +211,8 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     } else {
         do {
           let propsize = UInt32(MemoryLayout<Bool>.size)
-          var enableEcho = (echoCancel ? 0 : 1)
-          var enableAutoGain = (autoGain ? 0 : 1)
+          var enableEcho = (echoCancel ? 1 : 0)
+          var enableAutoGain = (autoGain ? 1 : 0)
 
           AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
                               kAUVoiceIOProperty_BypassVoiceProcessing,
