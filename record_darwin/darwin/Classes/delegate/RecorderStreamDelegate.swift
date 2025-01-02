@@ -77,9 +77,9 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
       return
     }
 
-    do {
-      try setVoiceProcessing(echoCancel: false, autoGain: false, audioEngine: engine)
-    } catch {}
+    // do {
+    //   try setVoiceProcessing(echoCancel: false, autoGain: false, audioEngine: engine)
+    // } catch {}
 
     // Remove the tap
     engine.inputNode.removeTap(onBus: bus)
@@ -195,7 +195,7 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     }
   }
 
-  private func setVoiceProcessing(echoCancel: Bool, autoGain: Bool, audioEngine: AVAudioEngine) throws {
+  private func setVoiceProcessing(echoCancel: Bool, autoGain: Bool, audioEngine: AVAudioEngine) {
     let propsize: UInt32 = UInt32(MemoryLayout<Bool>.size)
     var autoGain = autoGain
     var echoCancel = echoCancel
@@ -213,4 +213,5 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
                          AudioUnitElement(bus),
                          &autoGain,
                          propsize)
+  }
 }
