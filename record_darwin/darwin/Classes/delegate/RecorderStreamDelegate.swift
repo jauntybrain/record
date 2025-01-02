@@ -12,6 +12,7 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     #if os(iOS)
       print("calling initAVAudioSession")
       try initAVAudioSession(config: config)
+      try setVoiceProcessing(echoCancel: config.echoCancel, autoGain: config.autoGain, audioEngine: audioEngine)
     #else
       // set input device to the node
       if let deviceId = config.device?.id,
@@ -72,9 +73,13 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
 
   func stop(completionHandler: @escaping (String?) -> Void) {
     guard let engine = audioEngine else {
-        completionHandler(nil)
-        return
+      completionHandler(nil)
+      return
     }
+
+    do {
+      try setVoiceProcessing(echoCancel: false, autoGain: false, audioEngine: engine)
+    } catch {}
 
     // Remove the tap
     engine.inputNode.removeTap(onBus: bus)
@@ -90,10 +95,10 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
 
     // Wait a short time to ensure all audio processes have completed
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        self.clearAVAudioSession()
-        completionHandler(nil)
+      self.clearAVAudioSession()
+      completionHandler(nil)
     }
-}
+  }
 
   func pause() {
     audioEngine?.pause()
@@ -146,8 +151,7 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     converter: AVAudioConverter,
     recordEventHandler: RecordStreamHandler
   ) {
-    let inputCallback: AVAudioConverterInputBlock = { count, outStatus in
-      print("inputCallback count \(count)")
+    let inputCallback: AVAudioConverterInputBlock = { _, outStatus in
       outStatus.pointee = .haveData
       return buffer
     }
@@ -184,11 +188,6 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
       if let eventSink = recordEventHandler.eventSink {
         let bytes = Data(_: convertInt16toUInt8(samples))
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        let dateString: String = dateFormatter.string(from: Date())
-        print("\(Date()) sink bytes: \(bytes)")
-
         DispatchQueue.main.async {
           eventSink(FlutterStandardTypedData(bytes: bytes))
         }
@@ -196,23 +195,53 @@ class RecorderStreamDelegate: NSObject, AudioRecordingStreamDelegate {
     }
   }
 
-  private func initEffects(config: RecordConfig, audioEngine: AVAudioEngine) {
-    let propsize = UInt32(MemoryLayout<Bool>.size)
-    var autoGain = config.autoGain
-    var echoCancel = config.echoCancel
+  private func setVoiceProcessing(echoCancel: Bool, autoGain: Bool, audioEngine: AVAudioEngine) throws {
+    let startTime = CFAbsoluteTimeGetCurrent()
+    
+    if #available(iOS 13.0, *) {
+      do {
+        try audioEngine.inputNode.setVoiceProcessingEnabled(echoCancel)
+        audioEngine.inputNode.isVoiceProcessingAGCEnabled = autoGain
+      } catch {
+        throw RecorderError.error(
+          message: "Failed to setup voice processing",
+          details: "Echo cancel error: \(error)"
+        )
+      }
+    } else {
+        do {
+          let propsize = UInt32(MemoryLayout<Bool>.size)
+          var enableEcho = (echoCancel ? 0 : 1)
+          var enableAutoGain = (autoGain ? 0 : 1)
 
-    AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
-                         kAUVoiceIOProperty_BypassVoiceProcessing,
-                         kAudioUnitScope_Global,
-                         AudioUnitElement(bus),
-                         &echoCancel,
-                         propsize)
+          AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
+                              kAUVoiceIOProperty_BypassVoiceProcessing,
+                              kAudioUnitScope_Global,
+                              AudioUnitElement(bus),
+                              &enableEcho,
+                              propsize)
 
-    AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
-                         kAUVoiceIOProperty_VoiceProcessingEnableAGC,
-                         kAudioUnitScope_Global,
-                         AudioUnitElement(bus),
-                         &autoGain,
-                         propsize)
+          AudioUnitSetProperty(audioEngine.inputNode.audioUnit!,
+                              kAUVoiceIOProperty_VoiceProcessingEnableAGC,
+                              kAudioUnitScope_Global,
+                              AudioUnitElement(bus),
+                              &enableAutoGain,
+                              propsize)
+        } catch {
+        throw RecorderError.error(
+          message: "Failed to setup voice processing",
+          details: "Echo cancel error: \(error)"
+        )
+      }f
   }
+    
+  let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
+  print("Voice processing setup took \(timeElapsed * 1000)ms")
+  }
+}
+
+private func initEffects(config: RecordConfig, audioEngine _: AVAudioEngine) {
+  let propsize = UInt32(MemoryLayout<Bool>.size)
+  var autoGain = config.autoGain
+  var echoCancel = config.echoCancel
 }
